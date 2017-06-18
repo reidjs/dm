@@ -70,11 +70,29 @@ def draw_starting_hand(n, d):
   return hands
   
 def action_draw_onecard(player, deck):
-  if not cannot_draw_from_deck(deck):
+  if deck == -1: #draw from center deck
+    if len(CENTER) > 0:
+      HANDS[player].append(CENTER.pop())
+      if show_output:
+        print "Player ", player, "received card ", HANDS[player][-1], " from center pile."
+      return 0
+    else:
+      if show_output:
+        print "You cannot draw from an empty center pile"
+      return 1 
+  elif not cannot_draw_from_deck(deck):
     HANDS[player].append(DECKS[deck].pop())
+    if show_output:
+      print "Player ", player, "received card ", HANDS[player][-1], " from Deck ", deck  
     return 0
-  return 1
+  else:
+    return 1
     
+  
+#if the centerpile is not empty then take the top card of the center pile and add it to the player's hand
+#def action_draw_from_center(player):
+#   action_draw_onecard(player, -1)
+  
 def action_discard_diamond(player, card):
   deck = player 
   if not cannot_draw_from_deck(deck):
@@ -104,7 +122,7 @@ def action_discard_heart(player, card, deck):
   if not cannot_draw_from_deck(deck):
     HANDS[player].remove(card)
     add_to_center(card)
-    return DECKS[deck][len(DECKS[deck])-1] #consider returning the print statement 
+    return DECKS[deck][-1]
   return 1
 
 #if the deck is not currently blocked then discard spade to center pile and draw from that deck
@@ -147,15 +165,7 @@ def cannot_draw_from_any_deck():
   return 1
     
 
-#if the centerpile is not empty then take the top card of the center pile and add it to the player's hand
-def action_draw_from_center(player):
-  if len(CENTER) > 0:
-    HANDS[player].append(CENTER.pop())
-    return 0
-  else:
-    if show_output:
-      print "You cannot draw from an empty center pile"
-  return 1
+
 
 def action_player_discard(player, card):
   suit = card[1] 
@@ -164,14 +174,19 @@ def action_player_discard(player, card):
   #DISCARD DIAMOND
   if suit == 'd':
     return action_discard_diamond(player,card)
-  
   #DISCARD CLUB
   elif suit == 'c':
     if show_output:
       print "which deck would you like to block or unblock? "
     deck = int(raw_input())
     return action_discard_club(player, card,deck)
-    
+  #DISCARD SPADE
+  elif suit == 's':
+    if show_output:
+      print "which deck would you like to take from? "
+    deck = int(raw_input())
+    return action_discard_spade(player, card, deck)
+  
   #DISCARD HEART  
   elif suit == 'h':
     if cannot_draw_from_any_deck():
@@ -185,26 +200,23 @@ def action_player_discard(player, card):
     if peek_at_card != 1:
       if show_output:
         print "You see a ",peek_at_card
-      player_draw_card = 0 #force player to draw a card from a deck at this point
-      while not player_draw_card:
+      player_drew_card = 0 #force player to draw a card from a deck at this point
+      #Player is not allowed to discard again, but they may draw from any deck
+      while not player_drew_card:
         if show_output:
           print "which deck would you like to take from? "
         deck = int(raw_input())
         if not action_draw_onecard(player, deck):
-          player_draw_card = 1
+          player_drew_card = 1
           return 0
     else:
       if show_output:
-        print "Action failed (This deck might be blocked)"
+        print "Could not peek at this card (This deck might be blocked)"
       return 1
-  #DISCARD SPADE
-  elif suit == 's':
-    if show_output:
-      print "which deck would you like to take from? "
-    deck = int(raw_input())
-    return action_discard_spade(player, card, deck)
   else:
     return 1
+  
+  
     
 def add_to_center(card):
   if len(card) == 2:
@@ -244,21 +256,27 @@ def output_information(player):
 def evaluate_input(player, action):
   #DRAW FROM CENTER
   if action == 'd':
-    return action_draw_from_center(player)
+    if not action_draw_onecard(player,-1):
+      return 0
+    else:
+      get_input(player)
   #PASS TURN
   elif action == 'p':
     return 0
   #DISCARD (card)
   elif action in HANDS[player]:
-    return action_player_discard(player, action)
+    if not action_player_discard(player, action):
+      return 0
+    else:
+      get_input(player)
   else:
     if show_output: 
       print "Did not understand that action"
     return 1
   
-  
-  
+
 def get_input(player):
+  action = ''
   if show_output:
     print "(d)raw card from center, type the card to discard, or (p)ass"
   action = raw_input()
@@ -307,13 +325,13 @@ while emptyDeckCounter < nplayers-1:
   #next player
   
   output_information(playerturn)
-  if(get_input(playerturn)==0): #next turn 
-    if show_output:
-      print "________________________________________"
-    if playerturn < nplayers-1:
-      playerturn += 1
-    else:
-      playerturn = 0
+  get_input(playerturn) #next turn 
+  if show_output:
+    print "________________________________________"
+  if playerturn < nplayers-1:
+    playerturn += 1
+  else:
+    playerturn = 0
     
   #check endgame condition
   emptyDeckCounter = 0
